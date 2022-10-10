@@ -4,6 +4,7 @@ declare global {
             REACT_APP_UNEEQ_API_URL: string;
             REACT_APP_UNEEQ_CONVERSATION_ID: string;
             REACT_APP_UNEEQ_JWT_SECRET: string;
+            REACT_APP_CLOUD_ENDPOINT: string;
         }
     }
 }
