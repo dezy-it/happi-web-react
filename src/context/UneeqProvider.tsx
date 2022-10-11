@@ -71,10 +71,10 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         }
         if (data.type === EventTypes.WELCOME) {
             // if (!uneeq.current?.sessionId || !sessionIdJwt) return;
-            sendTranscript(data.payload);
+            uneeq.current.sendTranscript(data.payload);
         }
         if (data.type === EventTypes.MESSAGE) {
-            sendTranscript(data.payload)
+            uneeq.current.sendTranscript(data.payload)
         }
     }
 
@@ -85,7 +85,6 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     }, [])
     console.log(process.env.REACT_APP_CLOUD_ENDPOINT)
     useEffect(() => {
-        // if (window.ReactNativeWebView) {}
         if (!token)
             axios.post(`${process.env.REACT_APP_CLOUD_ENDPOINT}/getUneeqToken`, { token: process.env.REACT_APP_UNEEQ_CONVERSATION_ID }).then((res) => {
                 setToken(res.data.token)
@@ -95,16 +94,11 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     }, [])
 
     const handleUneeqMessage = (msg: any) => {
-        console.log(msg.uneeqMessageType)
+        console.log(msg)
         if (msg.uneeqMessageType === "SessionLive") {
             setReady(true)
         }
     }
-
-    // useEffect(() => {
-    //     if (!ready) return;
-    //     sendTranscript("Hey, Welcome to Happi dot A I. My name is Olivia and i am your virtual friend.")
-    // }, [ready])
 
     useEffect(() => {
         if (window.ReactNativeWebView) {
@@ -133,6 +127,8 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                     sendLocalVideo: false,
                     sendLocalAudio: true
                 });
+                window.uneeq = uneeq.current
+
                 uneeq.current.initWithToken(token);
             }
         }

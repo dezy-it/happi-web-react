@@ -16,6 +16,8 @@ interface Window {
     ReactNativeWebView: {
         postMessage(msg: string): void;
     };
+    uneeq: any
+    
 }
 
 interface Webkit {
