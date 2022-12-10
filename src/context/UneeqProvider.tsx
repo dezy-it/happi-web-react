@@ -53,9 +53,6 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     function handleNativeMessage(response: any) {
         let data: MessageProps = {};
 
-        if (window.ReactNativeWebView)
-            window.ReactNativeWebView.postMessage(response.data)
-
         if (typeof response.data === "string")
             data = JSON.parse(response.data);
         else
@@ -70,20 +67,34 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             setConversationId(data.payload);
         }
         if (data.type === EventTypes.WELCOME) {
-            // if (!uneeq.current?.sessionId || !sessionIdJwt) return;
+            if (!data.payload || data.payload === "")
+                return uneeq.current.playWelcomeMessage();
             uneeq.current.sendTranscript(data.payload);
         }
         if (data.type === EventTypes.MESSAGE) {
             uneeq.current.sendTranscript(data.payload)
         }
+        if (data.type === EventTypes.PAUSE_SESSION) {
+            uneeq.current.pauseSession();
+        }
+        if (data.type === EventTypes.RESUME_SESSION) {
+            uneeq.current.resumeSession();
+        }
+        if (data.type === EventTypes.END_SESSION) {
+            uneeq.current.endSession();
+        }
     }
 
     useEffect(() => {
         document.addEventListener("message", handleNativeMessage);
+        window.addEventListener("message", handleNativeMessage);
 
-        return () => document.removeEventListener("message", handleNativeMessage)
+        return () => {
+            document.removeEventListener("message", handleNativeMessage);
+            window.removeEventListener("message", handleNativeMessage);
+        }
     }, [])
-    console.log(process.env.REACT_APP_CLOUD_ENDPOINT)
+
     useEffect(() => {
         if (!token)
             axios.post(`${process.env.REACT_APP_CLOUD_ENDPOINT}/getUneeqToken`, { token: process.env.REACT_APP_UNEEQ_CONVERSATION_ID }).then((res) => {
@@ -94,7 +105,8 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     }, [])
 
     const handleUneeqMessage = (msg: any) => {
-        console.log(msg)
+        if (window.ReactNativeWebView)
+            window.ReactNativeWebView.postMessage(JSON.stringify(msg))
         if (msg.uneeqMessageType === "SessionLive") {
             setReady(true)
         }
