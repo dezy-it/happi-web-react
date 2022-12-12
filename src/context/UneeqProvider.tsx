@@ -1,9 +1,9 @@
 import axios from 'axios';
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { Uneeq } from 'uneeq-js';
 import { EventTypes, IEventTypes } from '../types';
 import { getEncryptedSessionId } from '../utils/encrypt';
-import { } from './UneeqProvider'
+import { } from './UneeqProvider';
 import { IUneeqContextData } from './UneeqProvider.d';
 
 const UneeqContext = React.createContext<IUneeqContextData>({
@@ -34,7 +34,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
 
     const sendTranscript = async (text: string, sessionId?: null | string, jwtToken?: string) => {
         let session_id = sessionId ?? uneeq.current?.sessionId;
-        let session_id_jwt = sessionIdJwt ?? getEncryptedSessionId(jwtToken ?? session_id ?? "")
+        let session_id_jwt = sessionIdJwt ?? getEncryptedSessionId(jwtToken ?? session_id ?? "");
         if (!sessionIdJwt) {
             setSessionIdJwt(session_id_jwt);
         }
@@ -44,11 +44,11 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             sessionIdJwt: session_id_jwt
         }).then((response) => {
             if (response.status === 204) return;
-            return uneeq.current?.sendTranscript("Error")
+            return uneeq.current?.sendTranscript("Error");
         }).catch((err) => {
-            return uneeq.current?.sendTranscript("Error")
-        })
-    }
+            return uneeq.current?.sendTranscript("Error");
+        });
+    };
 
     function handleNativeMessage(response: any) {
         let data: MessageProps = {};
@@ -72,7 +72,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             uneeq.current.sendTranscript(data.payload);
         }
         if (data.type === EventTypes.MESSAGE) {
-            uneeq.current.sendTranscript(data.payload)
+            uneeq.current.sendTranscript(data.payload);
         }
         if (data.type === EventTypes.PAUSE_SESSION) {
             uneeq.current.pauseSession();
@@ -92,31 +92,31 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         return () => {
             document.removeEventListener("message", handleNativeMessage);
             window.removeEventListener("message", handleNativeMessage);
-        }
-    }, [])
+        };
+    }, []);
 
     useEffect(() => {
         if (!token)
             axios.post(`${process.env.REACT_APP_CLOUD_ENDPOINT}/getUneeqToken`, { token: process.env.REACT_APP_UNEEQ_CONVERSATION_ID }).then((res) => {
-                setToken(res.data.token)
+                setToken(res.data.token);
             }).catch((err) => {
-                console.log(err.message)
-            })
-    }, [])
+                console.log(err.message);
+            });
+    }, []);
 
     const handleUneeqMessage = (msg: any) => {
         if (window.ReactNativeWebView)
-            window.ReactNativeWebView.postMessage(JSON.stringify(msg))
+            window.ReactNativeWebView.postMessage(JSON.stringify(msg));
         if (msg.uneeqMessageType === "SessionLive") {
-            setReady(true)
+            setReady(true);
         }
-    }
+    };
 
     useEffect(() => {
         if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ ready }))
+            window.ReactNativeWebView.postMessage(JSON.stringify({ ready }));
         }
-    }, [ready])
+    }, [ready]);
 
     useEffect(() => {
         if (!ready) return;
@@ -124,8 +124,8 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         if (!uneeq.current.sessionId) return;
 
         const jwtToken = getEncryptedSessionId(uneeq.current.sessionId);
-        setSessionIdJwt(jwtToken)
-    }, [uneeq, token, ready])
+        setSessionIdJwt(jwtToken);
+    }, [uneeq, token, ready]);
 
     useEffect(() => {
         if (avatarVideoContainer && localVideoContainer) {
@@ -137,26 +137,27 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                     conversationId: conversationId ?? process.env.REACT_APP_UNEEQ_CONVERSATION_ID,
                     messageHandler: handleUneeqMessage,
                     sendLocalVideo: false,
-                    sendLocalAudio: true
+                    sendLocalAudio: true,
+                    enableTransparentBackground: true
                 });
-                window.uneeq = uneeq.current
+                window.uneeq = uneeq.current;
 
                 uneeq.current.initWithToken(token);
             }
         }
-    }, [token, localVideoContainer, avatarVideoContainer, conversationId])
+    }, [token, localVideoContainer, avatarVideoContainer, conversationId]);
 
     const context = {
         setAvatarVideoContainer,
         setLocalVideoContainer,
         uneeq: uneeq.current
-    }
+    };
 
     return (
         <UneeqContext.Provider value={context}>
             {children}
         </UneeqContext.Provider>
-    )
-}
+    );
+};
 
-export default UneeqProvider
+export default UneeqProvider;
