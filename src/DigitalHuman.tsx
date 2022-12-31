@@ -9,7 +9,7 @@ function DigitalHuman() {
             <Box style={{ height: "100vh", background: "transparent" }} ref={ref => setAvatarVideoContainer(ref)} />
             <Box style={{ display: "none" }} ref={ref => setLocalVideoContainer(ref)} />
         </>
-    )
+    );
 }
 
-export default DigitalHuman
+export default DigitalHuman;

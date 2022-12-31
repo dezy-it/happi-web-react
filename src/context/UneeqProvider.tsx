@@ -16,7 +16,7 @@ export function useUneeq() {
     return useContext(UneeqContext);
 }
 
-interface UneeqContextProps extends React.PropsWithChildren { }
+interface UneeqContextProps extends React.PropsWithChildren<{}> { }
 interface MessageProps {
     type?: IEventTypes;
     payload?: string;
@@ -30,25 +30,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [localVideoContainer, setLocalVideoContainer] = useState<HTMLDivElement | null>(null);
     const [conversationId, setConversationId] = useState<undefined | string>(undefined);
     const [ready, setReady] = useState(false);
-    const [sessionIdJwt, setSessionIdJwt] = useState<string | undefined | null>(undefined);
-
-    const sendTranscript = async (text: string, sessionId?: null | string, jwtToken?: string) => {
-        let session_id = sessionId ?? uneeq.current?.sessionId;
-        let session_id_jwt = sessionIdJwt ?? getEncryptedSessionId(jwtToken ?? session_id ?? "");
-        if (!sessionIdJwt) {
-            setSessionIdJwt(session_id_jwt);
-        }
-        await axios.post(`${process.env.REACT_APP_UNEEQ_API_URL}/api/v1/avatar/${session_id}/speak`, {
-            answer: text,
-            answerAvatar: "{}",
-            sessionIdJwt: session_id_jwt
-        }).then((response) => {
-            if (response.status === 204) return;
-            return uneeq.current?.sendTranscript("Error");
-        }).catch((err) => {
-            return uneeq.current?.sendTranscript("Error");
-        });
-    };
+    const [platform, setPlatform] = useState<string | undefined>(undefined);
 
     function handleNativeMessage(response: any) {
         let data: MessageProps = {};
@@ -104,11 +86,35 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             });
     }, []);
 
+    useEffect(() => {
+        if (!avatarVideoContainer) return;
+        if (avatarVideoContainer.children.length < 1) return;
+        const videoElement = avatarVideoContainer.children[0] as HTMLVideoElement;
+        if (!platform || platform === "android") {
+            videoElement.defaultMuted = false;
+            videoElement.muted = false;
+            videoElement.volume = 1;
+        } else {
+            videoElement.defaultMuted = true;
+            videoElement.muted = true;
+            videoElement.volume = 0;
+        }
+    }, [avatarVideoContainer?.children.length, platform]);
+
+    useEffect(() => {
+        setPlatform(window.location.search.split("=")[1]);
+    }, []);
+
     const handleUneeqMessage = (msg: any) => {
+        console.log(msg.uneeqMessageType);
         if (window.ReactNativeWebView)
             window.ReactNativeWebView.postMessage(JSON.stringify(msg));
         if (msg.uneeqMessageType === "SessionLive") {
             setReady(true);
+        }
+        if (msg.uneeqMessageType === "WebRtcData") {
+            uneeq.current?.enableMicrophoneAndCamera(false);
+            uneeq.current?.enableMicrophone(false);
         }
     };
 
@@ -119,13 +125,11 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     }, [ready]);
 
     useEffect(() => {
-        if (!ready) return;
-        if (!uneeq.current) return;
-        if (!uneeq.current.sessionId) return;
-
-        const jwtToken = getEncryptedSessionId(uneeq.current.sessionId);
-        setSessionIdJwt(jwtToken);
-    }, [uneeq, token, ready]);
+        if (uneeq.current) {
+            uneeq.current.enableMicrophone(false);
+            uneeq.current.enableMicrophoneAndCamera(false);
+        }
+    }, [uneeq.current]);
 
     useEffect(() => {
         if (avatarVideoContainer && localVideoContainer) {
