@@ -10,7 +10,7 @@ export default function ChatMode() {
           <motion.div>
                {isVideoMode ? null : (
                     <motion.div>
-                         chat
+                         chat screen
                     </motion.div>)}
           </motion.div>
      )

@@ -51,12 +51,14 @@ function DigitalHuman() {
             {browserSupportsSpeechRecognition && isVideoMode ? (
                 <>
                     <Box
-                        style={{ height: "70vh", background: "black" }}
+                        style={{ height: "100vh", background: "black" }}
                         ref={(ref) => setAvatarVideoContainer(ref)}
                     />
                     <Box style={{ display: "none" }} ref={(ref) => setLocalVideoContainer(ref)} />
                     {/* <WebcamDemo /> */}
+                    
                     <VideoControls />
+                    
                 </>
             ) : null}
         </>

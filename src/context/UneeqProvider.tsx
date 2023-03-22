@@ -5,6 +5,9 @@ import { EventTypes, IEventTypes } from "../types";
 import { getEncryptedSessionId } from "../utils/encrypt";
 import {} from "./UneeqProvider";
 import { IUneeqContextData } from "./UneeqProvider.d";
+import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
+
+
 
 const UneeqContext = React.createContext<IUneeqContextData>({
     setAvatarVideoContainer: () => {},
@@ -30,6 +33,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [conversationId, setConversationId] = useState<undefined | string>(undefined);
     const [ready, setReady] = useState(false);
     const [platform, setPlatform] = useState<string | undefined>(undefined);
+    const { transcript } = useSpeechRecognition();
 
     const handleNativeMessage = useCallback(
         (response: any) => {
@@ -123,6 +127,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     useEffect(() => {
         if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(JSON.stringify({ ready }));
+            
         }
     }, [ready]);
 
