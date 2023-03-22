@@ -1,7 +1,7 @@
 import axios from "axios";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Uneeq } from "uneeq-js";
-import { EventTypes, IEventTypes } from "../types";
+import { EventTypes, IEventTypes, WebViewMessageEvents } from "../types";
 import { getEncryptedSessionId } from "../utils/encrypt";
 import {} from "./UneeqProvider";
 import { IUneeqContextData } from "./UneeqProvider.d";
@@ -28,39 +28,38 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [avatarVideoContainer, setAvatarVideoContainer] = useState<HTMLDivElement | null>(null);
     const [localVideoContainer, setLocalVideoContainer] = useState<HTMLDivElement | null>(null);
     const [conversationId, setConversationId] = useState<undefined | string>(undefined);
-    const [ready, setReady] = useState(false);
     const [platform, setPlatform] = useState<string | undefined>(undefined);
+
+    const endSession = useCallback(() => {
+        if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: "END_SESSION" }));
+        }
+        uneeq.current?.endSession();
+    }, [uneeq.current]);
 
     const handleNativeMessage = useCallback(
         (response: any) => {
-            let data: MessageProps = {};
+            try {
+                if (!("data" in response)) throw new Error();
+                if (typeof response.data !== "string") throw new Error();
 
-            if (typeof response.data === "string") data = JSON.parse(response.data);
-            else data = response.data;
+                let data: MessageProps = JSON.parse(response.data);
 
-            if (!data.payload || !uneeq.current) return;
-
-            if (data.type === EventTypes.TOKEN) {
-                setToken(data.payload);
-            }
-            if (data.type === EventTypes.CONVERSATION_ID) {
-                setConversationId(data.payload);
-            }
-            if (data.type === EventTypes.WELCOME) {
-                if (!data.payload || data.payload === "") return uneeq.current.playWelcomeMessage();
-                uneeq.current.sendTranscript(data.payload);
-            }
-            if (data.type === EventTypes.MESSAGE) {
-                uneeq.current.sendTranscript(data.payload);
-            }
-            if (data.type === EventTypes.PAUSE_SESSION) {
-                uneeq.current.pauseSession();
-            }
-            if (data.type === EventTypes.RESUME_SESSION) {
-                uneeq.current.resumeSession();
-            }
-            if (data.type === EventTypes.END_SESSION) {
-                uneeq.current.endSession();
+                if (data.type === "CONVERSATION_ID") setConversationId(data.payload);
+                if (data.type === "PLATFORM") setPlatform(data.payload);
+                if (data.type === "TOKEN") setToken(data.payload);
+                if (data.type === "MESSAGE")
+                    uneeq.current?.sendTranscript(data.payload ?? "Can you please repeat?");
+                if (data.type === "WELCOME") uneeq.current?.playWelcomeMessage();
+                if (data.type === "PAUSE_SESSION") uneeq.current?.pauseSession();
+                if (data.type === "RESUME_SESSION") uneeq.current?.resumeSession();
+                if (data.type === "END_SESSION") endSession();
+            } catch (error) {
+                if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(
+                        JSON.stringify({ type: "ERROR", message: "invalid_data" })
+                    );
+                }
             }
         },
         [uneeq.current]
@@ -109,22 +108,41 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         setPlatform(window.location.search.split("=")[1]);
     }, []);
 
-    const handleUneeqMessage = (msg: any) => {
-        if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-        if (msg.uneeqMessageType === "SessionLive") {
-            setReady(true);
-        }
-        if (msg.uneeqMessageType === "WebRtcData") {
-            uneeq.current?.enableMicrophoneAndCamera(false);
-            uneeq.current?.enableMicrophone(false);
-        }
+    const sendResponseToApplication = <
+        T extends { type: WebViewMessageEvents; [key: string]: any }
+    >(
+        message: T
+    ) => {
+        if (window.ReactNativeWebView)
+            window.ReactNativeWebView.postMessage(JSON.stringify(message));
     };
 
-    useEffect(() => {
-        if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ ready }));
+    const handleUneeqMessage = (msg: any) => {
+        if (typeof msg === "object" && "uneeqMessageType" in msg) {
+            switch (msg.uneeqMessageType) {
+                case "ServiceUnavailable":
+                    sendResponseToApplication({ type: "END_SESSION" });
+                    break;
+                case "SessionLive":
+                    sendResponseToApplication({ type: "READY" });
+                    break;
+                case "AvatarAnswer":
+                    sendResponseToApplication({ type: "UPDATE_CONVERSATION" });
+                    break;
+                case "StartedSpeaking":
+                    sendResponseToApplication({ type: "START_SPEAKING" });
+                    break;
+                case "FinishedSpeaking":
+                    sendResponseToApplication({ type: "FINISHED_SPEAKING" });
+                    break;
+                case "AvatarAvailable":
+                    sendResponseToApplication({ type: "SHOW_CAMERA" });
+                    break;
+                default:
+                    break;
+            }
         }
-    }, [ready]);
+    };
 
     useEffect(() => {
         if (uneeq.current) {
@@ -149,7 +167,6 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                         sendLocalAudio: false,
                         enableTransparentBackground: true,
                         enableClientPerformanceMessage: true,
-                        logging: true,
                         voiceInputMode: "VOICE_ACTIVITY",
                     });
                 window.uneeq = uneeq.current;
