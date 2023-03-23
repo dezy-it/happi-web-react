@@ -1,15 +1,15 @@
 import axios from "axios";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Uneeq } from "uneeq-js";
-import { EventTypes, IEventTypes, WebViewMessageEvents } from "../types";
-import { getEncryptedSessionId } from "../utils/encrypt";
+import { sendResponseToApplication } from "../hook/helper";
+import { IEventTypes, WebViewMessageEvents } from "../types";
 import {} from "./UneeqProvider";
 import { IUneeqContextData } from "./UneeqProvider.d";
 
 const UneeqContext = React.createContext<IUneeqContextData>({
     setAvatarVideoContainer: () => {},
     setLocalVideoContainer: () => {},
-    uneeq: null,
+    sendTranscript: () => {},
 });
 
 export function useUneeq() {
@@ -35,7 +35,14 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             window.ReactNativeWebView.postMessage(JSON.stringify({ type: "END_SESSION" }));
         }
         uneeq.current?.endSession();
-    }, [uneeq.current]);
+    }, [uneeq]);
+
+    const sendTranscript = useCallback(
+        (message: string) => {
+            uneeq.current?.sendTranscript(message);
+        },
+        [uneeq]
+    );
 
     const handleNativeMessage = useCallback(
         (response: any) => {
@@ -62,7 +69,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 }
             }
         },
-        [uneeq.current]
+        [uneeq, endSession]
     );
 
     useEffect(() => {
@@ -73,6 +80,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             document.removeEventListener("message", handleNativeMessage);
             window.removeEventListener("message", handleNativeMessage);
         };
+        // eslint-disable-next-line
     }, []);
 
     useEffect(() => {
@@ -87,40 +95,36 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 .catch((err) => {
                     console.log(err.message);
                 });
-    }, []);
+    }, [token]);
 
-    useEffect(() => {
-        if (!avatarVideoContainer) return;
-        if (avatarVideoContainer.children.length < 1) return;
-        const videoElement = avatarVideoContainer.children[0] as HTMLVideoElement;
-        if (!platform || platform === "android") {
-            videoElement.defaultMuted = false;
-            videoElement.muted = false;
-            videoElement.volume = 1;
-        } else {
-            videoElement.defaultMuted = true;
-            videoElement.muted = true;
-            videoElement.volume = 0;
-        }
-    }, [avatarVideoContainer?.children.length, platform]);
+    // useEffect(() => {
+    //     if (!avatarVideoContainer) return;
+    //     if (avatarVideoContainer.children.length < 1) return;
+    //     const videoElement = avatarVideoContainer.children[0] as HTMLVideoElement;
+    //     if (!platform || platform === "android") {
+    //         videoElement.defaultMuted = false;
+    //         videoElement.muted = false;
+    //         videoElement.volume = 1;
+    //     } else {
+    //         videoElement.defaultMuted = true;
+    //         videoElement.muted = true;
+    //         videoElement.volume = 0;
+    //     }
+    // }, [avatarVideoContainer, platform]);
 
     useEffect(() => {
         setPlatform(window.location.search.split("=")[1]);
     }, []);
 
-    const sendResponseToApplication = <
-        T extends { type: WebViewMessageEvents; [key: string]: any }
-    >(
-        message: T
-    ) => {
-        if (window.ReactNativeWebView)
-            window.ReactNativeWebView.postMessage(JSON.stringify(message));
-    };
-
+    // eslint-disable-next-line
     const handleUneeqMessage = (msg: any) => {
         if (typeof msg === "object" && "uneeqMessageType" in msg) {
             switch (msg.uneeqMessageType) {
                 case "ServiceUnavailable":
+                    sendResponseToApplication({
+                        type: "ERROR",
+                        message: msg?.error?.body?.message ?? "Avatar not available!",
+                    });
                     sendResponseToApplication({ type: "END_SESSION" });
                     break;
                 case "SessionLive":
@@ -146,10 +150,11 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
 
     useEffect(() => {
         if (uneeq.current) {
-            uneeq.current.enableMicrophone(false);
+            // uneeq.current.enableMicrophone(false);
             uneeq.current.enableMicrophoneAndCamera(false);
+            uneeq.current.enableCamera(false);
         }
-    }, [uneeq.current]);
+    }, [uneeq]);
 
     useEffect(() => {
         if (avatarVideoContainer && localVideoContainer) {
@@ -164,13 +169,12 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                             conversationId ?? process.env.REACT_APP_UNEEQ_CONVERSATION_ID,
                         messageHandler: handleUneeqMessage,
                         sendLocalVideo: false,
-                        sendLocalAudio: false,
+                        // sendLocalAudio: false,
                         enableTransparentBackground: true,
                         enableClientPerformanceMessage: true,
                         voiceInputMode: "VOICE_ACTIVITY",
                     });
                 window.uneeq = uneeq.current;
-
                 uneeq.current.initWithToken(token);
             }
         }
@@ -179,7 +183,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const context = {
         setAvatarVideoContainer,
         setLocalVideoContainer,
-        uneeq: uneeq.current,
+        sendTranscript,
     };
 
     return <UneeqContext.Provider value={context}>{children}</UneeqContext.Provider>;

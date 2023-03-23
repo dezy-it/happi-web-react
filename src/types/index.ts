@@ -19,3 +19,24 @@ export type WebViewMessageEvents =
     | "SHOW_CAMERA";
 
 export type IEventTypes = keyof typeof EventTypes;
+
+export type IError = {
+    type: "ERROR";
+    message: string;
+};
+
+export type IResponseType =
+    | IError
+    | {
+          type: WebViewMessageEvents;
+      }
+    | {
+          type: "RECOGNIZED_TEXT";
+          payload: string;
+      }
+    | {
+          type: "LISTENING_STATE";
+          payload: boolean;
+      };
+
+export type IReturnTypes = IResponseType["type"];

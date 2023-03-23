@@ -1,10 +1,12 @@
 // declare global {
 //     interface Window {
-//         ReactNativeWebView: 
+//         ReactNativeWebView:
 //     }
 // }
 
 declare const webkit: Webkit;
+
+declare module "*.svg";
 
 interface Window {
     webkit: Webkit;
@@ -16,8 +18,7 @@ interface Window {
     ReactNativeWebView: {
         postMessage(msg: string): void;
     };
-    uneeq: any
-    
+    uneeq: any;
 }
 
 interface Webkit {
@@ -28,13 +29,13 @@ interface Webkit {
          */
         ReactNativeWebView: {
             postMessage(message: string): void;
-        }
+        };
         /**
          * Added due to our call to addScriptMessageHandler.
          * @see: https://github.com/react-native-community/react-native-webview/blob/25552977852427cf5fdc7b233fd1bbc7c77c18b0/ios/RNCWebView.m#L214
          */
         ReactNativeHistoryShim: {
             postMessage(message: string): void;
-        }
-    }
+        };
+    };
 }
