@@ -1,4 +1,3 @@
-import CallController from "./components/CallController";
 import { useUneeq } from "./context/UneeqProvider";
 
 function DigitalHuman() {
@@ -13,7 +12,6 @@ function DigitalHuman() {
                 />
                 <div style={{ display: "none" }} ref={(ref) => setLocalVideoContainer(ref)} />
             </div>
-            <CallController />
         </>
     );
 }

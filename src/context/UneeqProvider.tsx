@@ -2,8 +2,7 @@ import axios from "axios";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Uneeq } from "uneeq-js";
 import { sendResponseToApplication } from "../hook/helper";
-import { IEventTypes, WebViewMessageEvents } from "../types";
-import {} from "./UneeqProvider";
+import { IEventTypes } from "../types";
 import { IUneeqContextData } from "./UneeqProvider.d";
 
 const UneeqContext = React.createContext<IUneeqContextData>({
@@ -28,7 +27,6 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [avatarVideoContainer, setAvatarVideoContainer] = useState<HTMLDivElement | null>(null);
     const [localVideoContainer, setLocalVideoContainer] = useState<HTMLDivElement | null>(null);
     const [conversationId, setConversationId] = useState<undefined | string>(undefined);
-    const [platform, setPlatform] = useState<string | undefined>(undefined);
 
     const endSession = useCallback(() => {
         if (window.ReactNativeWebView) {
@@ -53,7 +51,6 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 let data: MessageProps = JSON.parse(response.data);
 
                 if (data.type === "CONVERSATION_ID") setConversationId(data.payload);
-                if (data.type === "PLATFORM") setPlatform(data.payload);
                 if (data.type === "TOKEN") setToken(data.payload);
                 if (data.type === "MESSAGE")
                     uneeq.current?.sendTranscript(data.payload ?? "Can you please repeat?");
@@ -97,29 +94,13 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 });
     }, [token]);
 
-    // useEffect(() => {
-    //     if (!avatarVideoContainer) return;
-    //     if (avatarVideoContainer.children.length < 1) return;
-    //     const videoElement = avatarVideoContainer.children[0] as HTMLVideoElement;
-    //     if (!platform || platform === "android") {
-    //         videoElement.defaultMuted = false;
-    //         videoElement.muted = false;
-    //         videoElement.volume = 1;
-    //     } else {
-    //         videoElement.defaultMuted = true;
-    //         videoElement.muted = true;
-    //         videoElement.volume = 0;
-    //     }
-    // }, [avatarVideoContainer, platform]);
-
-    useEffect(() => {
-        setPlatform(window.location.search.split("=")[1]);
-    }, []);
-
     // eslint-disable-next-line
     const handleUneeqMessage = (msg: any) => {
         if (typeof msg === "object" && "uneeqMessageType" in msg) {
             switch (msg.uneeqMessageType) {
+                case "Ready":
+                    uneeq.current?.enableMicrophoneAndCamera(false);
+                    break;
                 case "ServiceUnavailable":
                     sendResponseToApplication({
                         type: "ERROR",
@@ -142,6 +123,9 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 case "AvatarAvailable":
                     sendResponseToApplication({ type: "SHOW_CAMERA" });
                     break;
+                case "DevicePermissionAllowed":
+                    uneeq.current?.enableMicrophoneAndCamera(false);
+                    break;
                 default:
                     break;
             }
@@ -149,35 +133,31 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     };
 
     useEffect(() => {
-        if (uneeq.current) {
-            // uneeq.current.enableMicrophone(false);
-            uneeq.current.enableMicrophoneAndCamera(false);
-            uneeq.current.enableCamera(false);
-        }
-    }, [uneeq]);
-
-    useEffect(() => {
-        if (avatarVideoContainer && localVideoContainer) {
-            if (typeof token === "string" && token.length > 0) {
-                uneeq.current =
-                    uneeq.current ??
-                    new Uneeq({
-                        url: process.env.REACT_APP_UNEEQ_API_URL,
-                        avatarVideoContainerElement: avatarVideoContainer as HTMLDivElement,
-                        localVideoContainerElement: localVideoContainer as HTMLDivElement,
-                        conversationId:
-                            conversationId ?? process.env.REACT_APP_UNEEQ_CONVERSATION_ID,
-                        messageHandler: handleUneeqMessage,
-                        sendLocalVideo: false,
-                        // sendLocalAudio: false,
-                        enableTransparentBackground: true,
-                        enableClientPerformanceMessage: true,
-                        voiceInputMode: "VOICE_ACTIVITY",
-                    });
-                window.uneeq = uneeq.current;
-                uneeq.current.initWithToken(token);
+        async function initialize() {
+            if (avatarVideoContainer && localVideoContainer) {
+                if (typeof token === "string" && token.length > 0) {
+                    uneeq.current =
+                        uneeq.current ??
+                        new Uneeq({
+                            url: process.env.REACT_APP_UNEEQ_API_URL,
+                            avatarVideoContainerElement: avatarVideoContainer as HTMLDivElement,
+                            localVideoContainerElement: localVideoContainer as HTMLDivElement,
+                            conversationId:
+                                conversationId ?? process.env.REACT_APP_UNEEQ_CONVERSATION_ID,
+                            messageHandler: handleUneeqMessage,
+                            sendLocalVideo: false,
+                            // sendLocalAudio:
+                            //     window.location.search.split("=")[1] === "android" ? false : true,
+                            enableTransparentBackground: true,
+                            voiceInputMode: "PUSH_TO_TALK",
+                        });
+                    window.uneeq = uneeq.current;
+                    await uneeq.current.initWithToken(token);
+                }
             }
         }
+
+        initialize();
     }, [token, localVideoContainer, avatarVideoContainer, conversationId]);
 
     const context = {
