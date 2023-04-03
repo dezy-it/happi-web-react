@@ -1,6 +1,6 @@
 import axios from "axios";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Uneeq } from "uneeq-js";
+import { Uneeq, UneeqMessageType } from "uneeq-js";
 import { sendResponseToApplication } from "../hook/helper";
 import { IEventTypes } from "../types";
 import { IUneeqContextData } from "./UneeqProvider.d";
@@ -95,11 +95,17 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     }, [token]);
 
     // eslint-disable-next-line
-    const handleUneeqMessage = (msg: any) => {
+    const handleUneeqMessage = (
+        msg: { uneeqMessageType: UneeqMessageType } & {
+            [key: string]: any;
+        }
+    ) => {
         if (typeof msg === "object" && "uneeqMessageType" in msg) {
+            const platform = window.location.search.split("=")[1];
             switch (msg.uneeqMessageType) {
-                case "Ready":
-                    uneeq.current?.enableMicrophoneAndCamera(false);
+                case UneeqMessageType.AvatarAvailable:
+                    sendResponseToApplication({ type: "SHOW_CAMERA" });
+                    if (platform === "android") uneeq.current?.enableMicrophone(false);
                     break;
                 case "ServiceUnavailable":
                     sendResponseToApplication({
@@ -124,7 +130,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                     sendResponseToApplication({ type: "SHOW_CAMERA" });
                     break;
                 case "DevicePermissionAllowed":
-                    uneeq.current?.enableMicrophoneAndCamera(false);
+                    if (platform === "android") uneeq.current?.enableMicrophone(false);
                     break;
                 default:
                     break;
@@ -146,8 +152,8 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                                 conversationId ?? process.env.REACT_APP_UNEEQ_CONVERSATION_ID,
                             messageHandler: handleUneeqMessage,
                             sendLocalVideo: false,
-                            // sendLocalAudio:
-                            //     window.location.search.split("=")[1] === "android" ? false : true,
+                            sendLocalAudio:
+                                window.location.search.split("=")[1] === "android" ? true : false,
                             enableTransparentBackground: true,
                             voiceInputMode: "PUSH_TO_TALK",
                         });
