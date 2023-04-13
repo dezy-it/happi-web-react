@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import voice, { useSpeechRecognition } from "react-speech-recognition";
 import { ReactComponent as ChatIcon } from "../assets/comments-regular.svg";
 import { ReactComponent as MicIcon } from "../assets/microphone.svg";
@@ -49,6 +49,7 @@ export default function CallController() {
 const ListeningButton = React.memo(() => {
     const { sendTranscript } = useUneeq();
     const {
+        transcript,
         finalTranscript,
         resetTranscript,
         isMicrophoneAvailable,
@@ -65,30 +66,35 @@ const ListeningButton = React.memo(() => {
                 });
             } else {
                 await voice.stopListening();
+                await sendResponseToApplication({
+                    type: "RECOGNIZED_TEXT",
+                    payload: transcript,
+                });
+                await sendTranscript(transcript);
+                await resetTranscript();
             }
         } catch (error) {
-            sendResponseToApplication({ type: "ERROR", message: "Unable to start microphone" });
+            sendResponseToApplication({ type: "ERROR", message: "Unable to access microphone" });
             resetTranscript();
         }
-    }, [listening]);
+    }, [listening, transcript, finalTranscript]);
 
     useEffect(() => {
         sendResponseToApplication({ type: "LISTENING_STATE", payload: listening });
         if (!listening) resetTranscript();
     }, [listening]);
 
-    useEffect(() => {
-        async function sendAndReset() {
-            if (listening) return;
-            await sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
-            sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
-            await sendTranscript(finalTranscript);
-            await resetTranscript();
-        }
-        if (finalTranscript.length > 0) sendAndReset();
+    // useEffect(() => {
+    //     async function sendAndReset() {
+    //         if (listening) return;
+    //         await sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
+    //         await sendTranscript(finalTranscript);
+    //         await resetTranscript();
+    //     }
+    //     if (finalTranscript.length > 0) sendAndReset();
 
-        // eslint-disable-next-line
-    }, [finalTranscript, listening]);
+    //     // eslint-disable-next-line
+    // }, [finalTranscript, listening]);
 
     useEffect(() => {
         if (!isMicrophoneAvailable)
