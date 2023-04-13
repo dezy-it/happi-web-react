@@ -1,3 +1,5 @@
+export type ICallModes = "VIDEO" | "CHAT";
+
 export enum EventTypes {
     TOKEN = "TOKEN",
     MESSAGE = "MESSAGE",
@@ -7,6 +9,7 @@ export enum EventTypes {
     RESUME_SESSION = "RESUME_SESSION",
     END_SESSION = "END_SESSION",
     PLATFORM = "PLATFORM",
+    VIDEO = "VIDEO",
 }
 
 export type WebViewMessageEvents =

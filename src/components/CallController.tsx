@@ -10,8 +10,14 @@ import { sendResponseToApplication } from "../hook/helper";
 import IconButton from "./IconButton";
 
 export default function CallController() {
+    const { callMode, setCallMode } = useUneeq();
+
     return (
-        <motion.div initial={{ height: 140 }} style={bottomSheetStyle}>
+        <motion.div
+            initial={{ height: 140, bottom: 0 }}
+            animate={{ bottom: callMode === "CHAT" ? -140 : 0 }}
+            style={bottomSheetStyle}
+        >
             <div
                 style={{
                     display: "grid",
@@ -21,7 +27,14 @@ export default function CallController() {
                     placeItems: "center",
                 }}
             >
-                <IconButton icon={ChatIcon} backgroundColor={colors.yellow} color="black" />
+                <IconButton
+                    icon={ChatIcon}
+                    backgroundColor={colors.yellow}
+                    color="black"
+                    onPress={() => {
+                        setCallMode("CHAT");
+                    }}
+                />
                 <ListeningButton />
                 <IconButton
                     icon={CallIcon}
@@ -35,7 +48,6 @@ export default function CallController() {
 
 const ListeningButton = React.memo(() => {
     const { sendTranscript } = useUneeq();
-    const [text, setText] = useState("");
     const {
         finalTranscript,
         resetTranscript,
@@ -69,12 +81,14 @@ const ListeningButton = React.memo(() => {
         async function sendAndReset() {
             if (listening) return;
             await sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
+            sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
             await sendTranscript(finalTranscript);
+            await resetTranscript();
         }
         if (finalTranscript.length > 0) sendAndReset();
 
         // eslint-disable-next-line
-    }, [finalTranscript, listening, text]);
+    }, [finalTranscript, listening]);
 
     useEffect(() => {
         if (!isMicrophoneAvailable)
@@ -114,7 +128,6 @@ const ListeningButton = React.memo(() => {
 
 const bottomSheetStyle: React.CSSProperties = {
     position: "fixed",
-    bottom: 0,
     right: 0,
     left: 0,
     backgroundColor: "white",

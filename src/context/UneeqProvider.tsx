@@ -2,13 +2,15 @@ import axios from "axios";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Uneeq, UneeqMessageType } from "uneeq-js";
 import { sendResponseToApplication } from "../hook/helper";
-import { IEventTypes } from "../types";
+import { ICallModes, IEventTypes } from "../types";
 import { IUneeqContextData } from "./UneeqProvider.d";
 
 const UneeqContext = React.createContext<IUneeqContextData>({
     setAvatarVideoContainer: () => {},
     setLocalVideoContainer: () => {},
     sendTranscript: () => {},
+    callMode: "VIDEO",
+    setCallMode() {},
 });
 
 export function useUneeq() {
@@ -27,6 +29,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [avatarVideoContainer, setAvatarVideoContainer] = useState<HTMLDivElement | null>(null);
     const [localVideoContainer, setLocalVideoContainer] = useState<HTMLDivElement | null>(null);
     const [conversationId, setConversationId] = useState<undefined | string>(undefined);
+    const [callMode, setCallMode] = useState<ICallModes>("VIDEO");
 
     const endSession = useCallback(() => {
         if (window.ReactNativeWebView) {
@@ -58,6 +61,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 if (data.type === "PAUSE_SESSION") uneeq.current?.pauseSession();
                 if (data.type === "RESUME_SESSION") uneeq.current?.resumeSession();
                 if (data.type === "END_SESSION") endSession();
+                if (data.type === "VIDEO") setCallMode("VIDEO");
             } catch (error) {
                 if (window.ReactNativeWebView) {
                     window.ReactNativeWebView.postMessage(
@@ -170,6 +174,8 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         setAvatarVideoContainer,
         setLocalVideoContainer,
         sendTranscript,
+        callMode,
+        setCallMode,
     };
 
     return <UneeqContext.Provider value={context}>{children}</UneeqContext.Provider>;
