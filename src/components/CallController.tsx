@@ -59,8 +59,8 @@ const ListeningButton = React.memo(() => {
     const handleMicrophone = useCallback(async () => {
         try {
             if (!listening) {
+                await resetTranscript();
                 await voice.startListening({
-                    continuous: true,
                     language: "en-US",
                 });
             } else {
@@ -83,7 +83,6 @@ const ListeningButton = React.memo(() => {
             await sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
             sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
             await sendTranscript(finalTranscript);
-            await resetTranscript();
         }
         if (finalTranscript.length > 0) sendAndReset();
 
@@ -112,6 +111,12 @@ const ListeningButton = React.memo(() => {
                 gap: 16,
             }}
         >
+            <motion.div
+                animate={{ opacity: finalTranscript.length > 0 ? 1 : 0 }}
+                style={toolTipContainer}
+            >
+                <div style={toolTip}>{finalTranscript}</div>
+            </motion.div>
             <IconButton
                 onPress={handleMicrophone}
                 icon={MicIcon}
@@ -134,4 +139,21 @@ const bottomSheetStyle: React.CSSProperties = {
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     padding: 16,
+};
+
+const toolTipContainer: React.CSSProperties = {
+    position: "fixed",
+    bottom: 160,
+    left: 0,
+    right: 0,
+    padding: 20,
+    display: "flex",
+    justifyContent: "center",
+};
+
+const toolTip: React.CSSProperties = {
+    borderRadius: 16,
+    background: colors.yellow,
+    color: "black",
+    padding: "10px 20px",
 };

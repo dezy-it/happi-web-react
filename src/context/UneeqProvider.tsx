@@ -109,7 +109,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             switch (msg.uneeqMessageType) {
                 case UneeqMessageType.AvatarAvailable:
                     sendResponseToApplication({ type: "SHOW_CAMERA" });
-                    if (platform === "android") uneeq.current?.enableMicrophone(false);
+                    // if (platform === "android") uneeq.current?.enableMicrophone(false);
                     break;
                 case "ServiceUnavailable":
                     sendResponseToApplication({
@@ -133,9 +133,9 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 case "AvatarAvailable":
                     sendResponseToApplication({ type: "SHOW_CAMERA" });
                     break;
-                case "DevicePermissionAllowed":
-                    if (platform === "android") uneeq.current?.enableMicrophone(false);
-                    break;
+                // case "DevicePermissionAllowed":
+                //     if (platform === "android") uneeq.current?.enableMicrophone(false);
+                //     break;
                 default:
                     break;
             }
@@ -156,8 +156,9 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                                 conversationId ?? process.env.REACT_APP_UNEEQ_CONVERSATION_ID,
                             messageHandler: handleUneeqMessage,
                             sendLocalVideo: false,
-                            sendLocalAudio:
-                                window.location.search.split("=")[1] === "android" ? true : false,
+                            // sendLocalAudio:
+                            //     window.location.search.split("=")[1] === "android" ? true : false,
+                            sendLocalAudio: true,
                             enableTransparentBackground: true,
                             voiceInputMode: "PUSH_TO_TALK",
                         });
