@@ -43,3 +43,20 @@ export type IResponseType =
       };
 
 export type IReturnTypes = IResponseType["type"];
+
+export type IEmotionList =
+    | "joy"
+    | "trust"
+    | "surprise"
+    | "sadness"
+    | "disgust"
+    | "anger"
+    | "anticipation";
+
+export type IQuickChatResponse = {
+    reply: string;
+    conv_id: string;
+    ord_number: number;
+    isExerciseModule: boolean;
+    emotion: IEmotionList;
+};

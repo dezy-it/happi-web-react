@@ -3,7 +3,8 @@ import React, { useCallback, useContext, useEffect, useRef, useState } from "rea
 import { Uneeq, UneeqMessageType } from "uneeq-js";
 import { sendResponseToApplication } from "../hook/helper";
 import { ICallModes, IEventTypes } from "../types";
-import { IUneeqContextData } from "./UneeqProvider.d";
+import { IRecognizerState, IUneeqContextData } from "./UneeqProvider.d";
+import { motion, AnimatePresence } from "framer-motion";
 
 const UneeqContext = React.createContext<IUneeqContextData>({
     setAvatarVideoContainer: () => {},
@@ -11,6 +12,8 @@ const UneeqContext = React.createContext<IUneeqContextData>({
     sendTranscript: () => {},
     callMode: "VIDEO",
     setCallMode() {},
+    recognizerState: "NEUTRAL",
+    setRecognizerState() {},
 });
 
 export function useUneeq() {
@@ -29,7 +32,9 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [avatarVideoContainer, setAvatarVideoContainer] = useState<HTMLDivElement | null>(null);
     const [localVideoContainer, setLocalVideoContainer] = useState<HTMLDivElement | null>(null);
     const [conversationId, setConversationId] = useState<undefined | string>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
     const [callMode, setCallMode] = useState<ICallModes>("VIDEO");
+    const [recognizerState, setRecognizerState] = useState<IRecognizerState>("NEUTRAL");
 
     const endSession = useCallback(() => {
         if (window.ReactNativeWebView) {
@@ -105,7 +110,6 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         }
     ) => {
         if (typeof msg === "object" && "uneeqMessageType" in msg) {
-            const platform = window.location.search.split("=")[1];
             switch (msg.uneeqMessageType) {
                 case UneeqMessageType.AvatarAvailable:
                     sendResponseToApplication({ type: "SHOW_CAMERA" });
@@ -120,15 +124,18 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                     break;
                 case "SessionLive":
                     sendResponseToApplication({ type: "READY" });
+                    setIsLoading(false);
                     break;
                 case "AvatarAnswer":
                     sendResponseToApplication({ type: "UPDATE_CONVERSATION" });
                     break;
                 case "StartedSpeaking":
                     sendResponseToApplication({ type: "START_SPEAKING" });
+                    setRecognizerState("SPEAKING");
                     break;
                 case "FinishedSpeaking":
                     sendResponseToApplication({ type: "FINISHED_SPEAKING" });
+                    setRecognizerState("NEUTRAL");
                     break;
                 case "AvatarAvailable":
                     sendResponseToApplication({ type: "SHOW_CAMERA" });
@@ -163,7 +170,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                             voiceInputMode: "PUSH_TO_TALK",
                         });
                     window.uneeq = uneeq.current;
-                    await uneeq.current.initWithToken(token);
+                    await uneeq.current?.initWithToken(token);
                 }
             }
         }
@@ -177,9 +184,42 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
         sendTranscript,
         callMode,
         setCallMode,
+        recognizerState,
+        setRecognizerState,
     };
 
-    return <UneeqContext.Provider value={context}>{children}</UneeqContext.Provider>;
+    return (
+        <UneeqContext.Provider value={context}>
+            {children}
+            <AnimatePresence>
+                {isLoading && (
+                    <motion.div
+                        initial={{ opacity: 1 }}
+                        animate={{ opacity: 1 }}
+                        exit={{
+                            opacity: 0,
+                        }}
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            background: "white",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            flexDirection: "column",
+                        }}
+                    >
+                        <img
+                            src={require("../assets/99109-loading.gif")}
+                            alt=""
+                            style={{ height: 120, width: 120 }}
+                        />
+                        <p style={{ marginTop: 10 }}>Connecting to call...</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </UneeqContext.Provider>
+    );
 };
 
 export default UneeqProvider;

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import voice, { useSpeechRecognition } from "react-speech-recognition";
 import { ReactComponent as ChatIcon } from "../assets/comments-regular.svg";
 import { ReactComponent as MicIcon } from "../assets/microphone.svg";
@@ -8,6 +8,8 @@ import { colors } from "../constants/color";
 import { useUneeq } from "../context/UneeqProvider";
 import { sendResponseToApplication } from "../hook/helper";
 import IconButton from "./IconButton";
+import { IQuickChatResponse } from "../types";
+import axios from "axios";
 
 export default function CallController() {
     const { callMode, setCallMode } = useUneeq();
@@ -28,6 +30,7 @@ export default function CallController() {
                 }}
             >
                 <IconButton
+                    disabled
                     icon={ChatIcon}
                     backgroundColor={colors.yellow}
                     color="black"
@@ -37,6 +40,7 @@ export default function CallController() {
                 />
                 <ListeningButton />
                 <IconButton
+                    disabled
                     icon={CallIcon}
                     iconStyle={{ rotate: "-225deg" }}
                     onPress={() => sendResponseToApplication({ type: "END_SESSION" })}
@@ -47,7 +51,7 @@ export default function CallController() {
 }
 
 const ListeningButton = React.memo(() => {
-    const { sendTranscript } = useUneeq();
+    const { sendTranscript, recognizerState, setRecognizerState } = useUneeq();
     const {
         transcript,
         finalTranscript,
@@ -56,6 +60,8 @@ const ListeningButton = React.memo(() => {
         browserSupportsSpeechRecognition,
         listening,
     } = useSpeechRecognition();
+
+    const [conv_id, setConvId] = useState<string | undefined>(undefined);
 
     const handleMicrophone = useCallback(async () => {
         try {
@@ -66,11 +72,11 @@ const ListeningButton = React.memo(() => {
                 });
             } else {
                 await voice.stopListening();
-                await sendResponseToApplication({
-                    type: "RECOGNIZED_TEXT",
-                    payload: transcript,
-                });
-                await sendTranscript(transcript);
+                // await sendResponseToApplication({
+                //     type: "RECOGNIZED_TEXT",
+                //     payload: transcript,
+                // });
+                // await sendTranscript(transcript);
             }
         } catch (error) {
             sendResponseToApplication({ type: "ERROR", message: "Unable to access microphone" });
@@ -82,15 +88,36 @@ const ListeningButton = React.memo(() => {
         sendResponseToApplication({ type: "LISTENING_STATE", payload: listening });
     }, [listening]);
 
-    useEffect(() => {
-        async function sendAndReset() {
-            await sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
+    async function sendAndReset() {
+        try {
+            setRecognizerState("THINKING");
+            await sendResponseToApplication({
+                type: "RECOGNIZED_TEXT",
+                payload: finalTranscript,
+            });
             sendResponseToApplication({ type: "RECOGNIZED_TEXT", payload: finalTranscript });
-            await sendTranscript(finalTranscript);
+            if (window.location.search.split("=")[1] !== "ios") {
+                const response = await axios.post<{ response: IQuickChatResponse }>(
+                    `${process.env.REACT_APP_CLOUD_ENDPOINT}/requestQuickChat`,
+                    {
+                        conv_id: conv_id,
+                        message: finalTranscript,
+                    }
+                );
+
+                setRecognizerState("SPEAKING");
+                await sendTranscript(response.data.response.reply);
+                setConvId(response.data.response.conv_id);
+            }
+        } catch (error) {
+            setRecognizerState("NEUTRAL");
         }
+    }
+
+    useEffect(() => {
         if (finalTranscript.length > 0) sendAndReset();
 
-        //     // eslint-disable-next-line
+        // eslint-disable-next-line
     }, [finalTranscript]);
 
     useEffect(() => {
@@ -122,6 +149,7 @@ const ListeningButton = React.memo(() => {
                 <div style={toolTip}>{finalTranscript}</div>
             </motion.div>
             <IconButton
+                disabled={recognizerState === "THINKING" || recognizerState === "SPEAKING"}
                 onPress={handleMicrophone}
                 icon={MicIcon}
                 size={64}
@@ -129,7 +157,13 @@ const ListeningButton = React.memo(() => {
                 animate={listening}
             />
             <p style={{ fontSize: 14, fontWeight: 500 }}>
-                {listening ? "Tap to get response" : "Tap to speak"}
+                {listening
+                    ? "Tap to get response"
+                    : recognizerState === "SPEAKING"
+                    ? "Speaking! Please wait..."
+                    : recognizerState === "THINKING"
+                    ? "Thinking..."
+                    : "Tap to speak"}
             </p>
         </div>
     );

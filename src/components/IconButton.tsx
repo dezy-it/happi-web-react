@@ -11,6 +11,7 @@ export type IconButtonProps = {
     color?: string;
     iconStyle?: React.CSSProperties;
     animate?: boolean;
+    disabled?: boolean;
 };
 
 function IconButton({
@@ -22,10 +23,15 @@ function IconButton({
     icon: Icon,
     iconStyle,
     animate = false,
+    disabled = false,
 }: IconButtonProps) {
     return (
         <div>
-            <button onClick={onPress} style={{ ...buttonStyles, backgroundColor, height: size }}>
+            <button
+                disabled={disabled}
+                onClick={onPress}
+                style={{ ...buttonStyles, backgroundColor, height: size }}
+            >
                 <Icon
                     style={{ height: iconSize, aspectRatio: 1, zIndex: 1, ...iconStyle }}
                     strokeWidth={2}
