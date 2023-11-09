@@ -1,7 +1,7 @@
 import axios from "axios";
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Uneeq } from "uneeq-js";
-import { EventTypes, IEventTypes } from "../types";
+import { EventTypes, IEventTypes, IMessageType } from "../types";
 import { getEncryptedSessionId } from "../utils/encrypt";
 import {} from "./UneeqProvider";
 import { IUneeqContextData } from "./UneeqProvider.d";
@@ -17,10 +17,6 @@ export function useUneeq() {
 }
 
 interface UneeqContextProps extends React.PropsWithChildren<{}> {}
-interface MessageProps {
-    type?: IEventTypes;
-    payload?: string;
-}
 
 const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
     const [token, setToken] = useState<string | undefined>(undefined);
@@ -33,12 +29,12 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
 
     const handleNativeMessage = useCallback(
         (response: any) => {
-            let data: MessageProps = {};
+            let data: IMessageType;
 
             if (typeof response.data === "string") data = JSON.parse(response.data);
             else data = response.data;
 
-            if (!data.payload || !uneeq.current) return;
+            if (!uneeq.current) return;
 
             if (data.type === EventTypes.TOKEN) {
                 setToken(data.payload);
@@ -47,7 +43,8 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
                 setConversationId(data.payload);
             }
             if (data.type === EventTypes.WELCOME) {
-                if (!data.payload || data.payload === "") return uneeq.current.playWelcomeMessage();
+                if (!data.payload || data.payload.trim() === "")
+                    return uneeq.current.playWelcomeMessage();
                 uneeq.current.sendTranscript(data.payload);
             }
             if (data.type === EventTypes.MESSAGE) {
@@ -62,6 +59,7 @@ const UneeqProvider: React.FC<UneeqContextProps> = ({ children }) => {
             if (data.type === EventTypes.END_SESSION) {
                 uneeq.current.endSession();
             }
+            if (data.type === EventTypes.STOP_SPEAKING) uneeq?.current.stopSpeaking();
         },
         [uneeq.current]
     );
